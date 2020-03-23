@@ -27,7 +27,49 @@ public class SpringBootReactorApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		ejemploUsuarioComentariosFlatMap();
+		ejemploZipWithRangos();
+	}
+
+	public void ejemploZipWithRangos() {
+		Flux<Integer> range = Flux.range(0, 4);
+		Flux.just(1,2,3,4)
+				.map(i -> (i*2))
+				.zipWith(range, (uno, dos) -> String.format("Primer Flux: %d, Segundo Flux: %d", uno, dos))
+				.subscribe(texto -> log.info(texto));
+	}
+
+	public void ejemploUsuarioComentariosZipWithForma2() {
+		Mono<Usuario> usuarioMono = Mono.fromCallable(() -> new Usuario("Jhon", "Doe"));
+
+		Mono<Comentarios> comentariosMono = Mono.fromCallable(() -> {
+			Comentarios comentarios = new Comentarios();
+			comentarios.addComentario("Hola pepe, que tal!");
+			comentarios.addComentario("whats up!");
+			comentarios.addComentario("curso spring boot!");
+			return comentarios;
+		});
+
+		Mono<UsuarioComentarios> usuarioComentariosMono = usuarioMono.zipWith(comentariosMono).map(tuple -> {
+			Usuario u = tuple.getT1();
+			Comentarios c = tuple.getT2();
+			return new UsuarioComentarios(u, c);
+		});
+		usuarioComentariosMono.subscribe(uc -> log.info(uc.toString()));
+	}
+
+	public void ejemploUsuarioComentariosZipWith() {
+		Mono<Usuario> usuarioMono = Mono.fromCallable(() -> new Usuario("Jhon", "Doe"));
+
+		Mono<Comentarios> comentariosMono = Mono.fromCallable(() -> {
+			Comentarios comentarios = new Comentarios();
+			comentarios.addComentario("Hola pepe, que tal!");
+			comentarios.addComentario("whats up!");
+			comentarios.addComentario("curso spring boot!");
+			return comentarios;
+		});
+
+		Mono<UsuarioComentarios> usuarioComentariosMono = usuarioMono.zipWith(comentariosMono, (usuario, comentarioUsuario) -> new UsuarioComentarios(usuario, comentarioUsuario));
+		usuarioComentariosMono.subscribe(uc -> log.info(uc.toString()));
 	}
 
 	public void ejemploUsuarioComentariosFlatMap() {
@@ -41,8 +83,8 @@ public class SpringBootReactorApplication implements CommandLineRunner {
 			return comentarios;
 		});
 
-		usuarioMono.flatMap(u -> comentariosMono.map(c -> new UsuarioComentarios(u, c)))
-		.subscribe(uc -> log.info(uc.toString()));
+		Mono<UsuarioComentarios> usuarioComentariosMono = usuarioMono.flatMap(u -> comentariosMono.map(c -> new UsuarioComentarios(u, c)));
+		usuarioComentariosMono.subscribe(uc -> log.info(uc.toString()));
 	}
 
 	public void ejemploCllectList() throws Exception {
