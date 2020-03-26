@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,7 +17,9 @@ import org.thymeleaf.spring5.context.webflux.ReactiveDataDriverContextVariable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.validation.Valid;
 import java.time.Duration;
+import java.util.Date;
 
 @SessionAttributes("producto")
 @Controller
@@ -33,22 +36,52 @@ public class ProductoController {
         productos.subscribe(prod -> log.info(prod.getNombre()));
         model.addAttribute("productos", productos);
         model.addAttribute("titulo", "Lista de productos");
+        model.addAttribute("boton", "crear");
         return Mono.just("listar");
     }
 
     @GetMapping("/form")
     public Mono<String> crear(Model model) {
         model.addAttribute("producto", new Producto());
+        model.addAttribute("boton", "crear");
         model.addAttribute("titulo", "Formulario de producto");
         return Mono.just("form");
     }
 
     @PostMapping("/form")
-    public Mono<String> guardar(Producto producto, SessionStatus status) {
-        status.setComplete();
-        return productoServices.save(producto).doOnNext(producto1 -> {
-            log.info("Producto Guardado:" + producto.getNombre() + " Id: " + producto.getId());
-        }).thenReturn("redirect:/listar");
+    public Mono<String> guardar(@Valid Producto producto, BindingResult result, Model model, SessionStatus status) {
+        if (result.hasErrors()) {
+            model.addAttribute("boton", "Guardar");
+            model.addAttribute("titulo", "Errores en formulario producto");
+            return Mono.just("form");
+        } else {
+            status.setComplete();
+            if (producto.getCreateAt() == null) {
+                producto.setCreateAt(new Date());
+            }
+            return productoServices.save(producto).doOnNext(producto1 -> {
+                log.info("Producto Guardado:" + producto.getNombre() + " Id: " + producto.getId());
+            }).thenReturn("redirect:/listar?success=producto+guardado+con+exito");
+        }
+    }
+
+    @GetMapping("/form-v2/{id}")
+    public Mono<String> editarv2(@PathVariable String id, Model model) {
+        return productoServices.findById(id).doOnNext(producto -> {
+            log.info("Producto: " + producto.getNombre());
+            model.addAttribute("titulo", "Editar Producto");
+            model.addAttribute("boton", "editar");
+            model.addAttribute("producto", producto);
+        })
+        .defaultIfEmpty(new Producto())
+        .flatMap(producto -> {
+            if (producto.getId() == null) {
+                return Mono.error(new InterruptedException("No existe el producto"));
+            }
+            return Mono.just(producto);
+        })
+        .thenReturn("form")
+        .onErrorResume(ex -> Mono.just("redirect:/listar?error=no+existe+el+producto"));
     }
 
     @GetMapping("/form/{id}")
@@ -57,6 +90,7 @@ public class ProductoController {
             log.info("Producto: " + producto.getNombre());
         }).defaultIfEmpty(new Producto());
         model.addAttribute("titulo", "Editar Producto");
+        model.addAttribute("boton", "editar");
         model.addAttribute("producto", productoMono);
         return Mono.just("form");
     }
