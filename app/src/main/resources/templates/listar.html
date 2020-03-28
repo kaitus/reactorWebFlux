@@ -18,8 +18,10 @@
         <th>nombre</th>
         <th>precio</th>
         <th>fecha</th>
+        <th>Categoria</th>
         <th>Editar</th>
         <th>Editar V2</th>
+        <th>Eliminar</th>
     </tr>
     </thead>
     <tbody>
@@ -28,8 +30,10 @@
         <td th:text="${productos.nombre}"></td>
         <td th:text="${productos.precio}"></td>
         <td th:text="${productos.createAt}"></td>
+        <td th:text="${productos.categoria.nombre}"></td>
         <td > <a th:href="@{/form/} + ${productos.id}">Editar</a></td>
         <td > <a th:href="@{/form-v2/} + ${productos.id}">Editar v2</a></td>
+        <td > <a th:href="@{/eliminar/} + ${productos.id}" onclick="return confirm('Esta seguro que desea eliminar?');">Eliminar</a></td>
     </tr>
     </tbody>
 </table>

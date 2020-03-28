@@ -1,5 +1,6 @@
 package com.springboot.webflux.app.controllers;
 
+import com.springboot.webflux.app.models.documents.Categoria;
 import com.springboot.webflux.app.models.documents.Producto;
 import com.springboot.webflux.app.models.services.ProductoServices;
 import org.slf4j.Logger;
@@ -8,10 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.SessionAttributes;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.support.SessionStatus;
 import org.thymeleaf.spring5.context.webflux.ReactiveDataDriverContextVariable;
 import reactor.core.publisher.Flux;
@@ -29,6 +27,11 @@ public class ProductoController {
     private ProductoServices productoServices;
 
     private static final Logger log = LoggerFactory.getLogger(ProductoController.class);
+
+    @ModelAttribute("categorias")
+    public Flux<Categoria> categorias() {
+        return productoServices.findAllCategoria();
+    }
 
     @GetMapping({"/listar", "/"})
     public Mono<String> listar(Model model) {
@@ -63,6 +66,23 @@ public class ProductoController {
                 log.info("Producto Guardado:" + producto.getNombre() + " Id: " + producto.getId());
             }).thenReturn("redirect:/listar?success=producto+guardado+con+exito");
         }
+    }
+
+    @GetMapping("/eliminar/{id}")
+    public Mono<String> eliminar(@PathVariable String id) {
+        return productoServices.findById(id).defaultIfEmpty(new Producto())
+            .flatMap(producto -> {
+                if (producto.getId() == null) {
+                    return Mono.error(new InterruptedException("No existe el producto a eliminar"));
+                }
+                return Mono.just(producto);
+            }).flatMap(p -> {
+                log.info("Eliminando producto" + p.getNombre());
+                log.info("Eliminando producto Id" + p.getId());
+                return productoServices.delete(p);
+            })
+            .thenReturn("redirect:/listar?success=producto+eliminado+con+exito")
+            .onErrorResume(ex -> Mono.just("redirect:/listar?error=no+existe+el+producto+a+eliminar"));
     }
 
     @GetMapping("/form-v2/{id}")
