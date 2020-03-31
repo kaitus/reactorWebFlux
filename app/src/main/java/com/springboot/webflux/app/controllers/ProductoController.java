@@ -6,6 +6,8 @@ import com.springboot.webflux.app.models.services.ProductoServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -16,8 +18,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.validation.Valid;
+import java.io.File;
 import java.time.Duration;
 import java.util.Date;
+import java.util.UUID;
 
 @SessionAttributes("producto")
 @Controller
@@ -26,11 +30,30 @@ public class ProductoController {
     @Autowired
     private ProductoServices productoServices;
 
+    @Value("${config.uploads.path}")
+    private String path;
+
     private static final Logger log = LoggerFactory.getLogger(ProductoController.class);
 
     @ModelAttribute("categorias")
     public Flux<Categoria> categorias() {
         return productoServices.findAllCategoria();
+    }
+
+    @GetMapping("/ver/{id}")
+    public Mono<String> ver(Model model, @PathVariable String id) {
+        return productoServices.findById(id)
+                .doOnNext(p -> {
+                   model.addAttribute("producto", p);
+                   model.addAttribute("titulo", "detalle del producto");
+                }).switchIfEmpty(Mono.just(new Producto()))
+                .flatMap(p -> {
+                    if (p.getId() == null) {
+                        return Mono.error(new InterruptedException("No existe el producto"));
+                    }
+                    return Mono.just(p);
+                }).then(Mono.just("ver"))
+                .onErrorResume(ex -> Mono.just("redirect:/listar?error=no+existe+el+producto"));
     }
 
     @GetMapping({"/listar", "/"})
@@ -52,19 +75,40 @@ public class ProductoController {
     }
 
     @PostMapping("/form")
-    public Mono<String> guardar(@Valid Producto producto, BindingResult result, Model model, SessionStatus status) {
+    public Mono<String> guardar(@Valid Producto producto, BindingResult result, Model model, @RequestPart("file") FilePart file, SessionStatus status) {
         if (result.hasErrors()) {
             model.addAttribute("boton", "Guardar");
             model.addAttribute("titulo", "Errores en formulario producto");
             return Mono.just("form");
         } else {
             status.setComplete();
-            if (producto.getCreateAt() == null) {
-                producto.setCreateAt(new Date());
-            }
-            return productoServices.save(producto).doOnNext(producto1 -> {
+
+            Mono<Categoria> categoria = productoServices.findCategoriaById(producto.getCategoria().getId());
+
+            return categoria.flatMap(c -> {
+                if (producto.getCreateAt() == null) {
+                    producto.setCreateAt(new Date());
+                }
+
+                if (!file.filename().isEmpty()){
+                    producto.setFoto(UUID.randomUUID().toString() + " " + file.filename()
+                            .replace(" ", "")
+                            .replace(":","")
+                            .replace("\\", ""));
+                }
+                producto.setCategoria(c);
+                return productoServices.save(producto);
+            }).doOnNext(producto1 -> {
+                log.info("Categoria Guardado:" + producto.getCategoria().getNombre() + " Id: " + producto.getCategoria().getId());
                 log.info("Producto Guardado:" + producto.getNombre() + " Id: " + producto.getId());
-            }).thenReturn("redirect:/listar?success=producto+guardado+con+exito");
+            }).flatMap(p -> {
+                if (!file.filename().isEmpty()){
+                    return file.transferTo(new File(path + p.getFoto()));
+                } else {
+                    return Mono.empty();
+                }
+            })
+            .thenReturn("redirect:/listar?success=producto+guardado+con+exito");
         }
     }
 
