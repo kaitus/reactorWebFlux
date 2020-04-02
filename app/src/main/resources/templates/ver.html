@@ -8,7 +8,10 @@
 
 <h1 th:text="${titulo}"></h1>
 <a th:href="@{/listar}">volver </a>
-
+<div>
+    <image th:if="${producto.foto != null && #strings.length(producto.foto)>0}" style="max-width: 25%;"
+           th:src="@{/upload/img/} + ${producto.foto}" th:alt="${producto.nombre}"></image>
+</div>
 <div>
     <ul>
         <li th:text="'Nombre: ' + ${producto.nombre}"></li>
