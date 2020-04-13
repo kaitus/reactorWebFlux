@@ -12,13 +12,13 @@ public class Categoria {
     @NotEmpty
     private String id;
 
-    private String Nombre;
+    private String nombre;
 
     public Categoria() {
     }
 
     public Categoria(String nombre) {
-        Nombre = nombre;
+        this.nombre = nombre;
     }
 
     public String getId() {
@@ -30,10 +30,10 @@ public class Categoria {
     }
 
     public String getNombre() {
-        return Nombre;
+        return nombre;
     }
 
     public void setNombre(String nombre) {
-        Nombre = nombre;
+        this.nombre = nombre;
     }
 }
