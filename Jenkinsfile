@@ -13,14 +13,4 @@ pipeline {
                 bat 'mvn -Dmaven.test.failure.ignore=true install'
             }
         }
-	stage('Test') {
-            steps {
-                bat 'mvn test'
-            }
-        }
-    post {
-        always {
-            junit 'build/test-results/**/*.xml'
-        }
-    }
 }
