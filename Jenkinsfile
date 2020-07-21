@@ -1,16 +1,28 @@
 pipeline {
-
     agent any
-
+    tools {
+        maven 'Maven 3.3.9'
+        jdk 'jdk8'
+    }
     stages {
-        stage('Checkout') {
-            steps { //Checking out the repo
-                git 'https://github.com/kaitus/spring-boot-api-example.git'
+        stage ('Initialize') {
+            steps {
+                sh '''
+                    echo "PATH = ${PATH}"
+                    echo "M2_HOME = ${M2_HOME}"
+                '''
             }
         }
-	stage('compile') {
-            steps { //Compile application
-                bat 'mvn -Dmaven.test.failure.ignore=true install'
+
+        stage ('Build') {
+            steps {
+                sh 'mvn -Dmaven.test.failure.ignore=true install' 
+            }
+            post {
+                success {
+                    junit 'target/surefire-reports/**/*.xml' 
+                }
             }
         }
+    }
 }
