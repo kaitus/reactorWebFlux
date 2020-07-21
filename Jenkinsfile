@@ -15,7 +15,7 @@ pipeline {
         }
 	stage('Test') {
             steps {
-                bat 'gradlew test'
+                bat 'mvn test'
             }
         }
     post {
