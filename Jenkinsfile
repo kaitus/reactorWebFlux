@@ -1,12 +1,9 @@
 pipeline {
     agent any
     stages {
-        stage ('Initialize') {
-            steps {
-                sh '''
-                    echo "PATH = ${PATH}"
-                    echo "M2_HOME = ${M2_HOME}"
-                '''
+        stage('Checkout') {
+            steps { //Checking out the repo
+                git 'https://github.com/kaitus/reactorWebFlux.git'
             }
         }
 
